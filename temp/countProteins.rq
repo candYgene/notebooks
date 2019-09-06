@@ -1,8 +1,0 @@
-#+ summary: Count protein accessions in the tomato proteome from the UniProt database.
-#+ tags:
-#+      - CandyGene (Example 2)
-PREFIX uniprot: <http://purl.uniprot.org/core/>
-
-SELECT (COUNT(*) AS ?n)
-FROM <http://www.uniprot.org/proteomes/Solanum_lycopersicum>
-WHERE { ?s a uniprot:Protein }
