@@ -1,0 +1,79 @@
+# QTL-Article
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX pmc: <http://identifiers.org/pmc/>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX QTL: <http://purl.obolibrary.org/obo/SO_0000771>
+
+SELECT
+  str(?qtl_id)
+  replace(str(?pmc_id), '.+/', '')
+WHERE {
+  GRAPH <http://europepmc.org> {
+    SELECT
+      *
+    WHERE {
+      ?qtl_uri a QTL: ;
+        dcterms:identifier ?qtl_id ;
+        dcterms:isReferencedBy ?pmc_id .
+    }
+  }
+}
+
+# QTL-Gene
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX so: <http://purl.obolibrary.org/obo/so#>
+PREFIX Gene: <http://purl.obolibrary.org/obo/SO_0001217>
+PREFIX QTL: <http://purl.obolibrary.org/obo/SO_0000771>
+
+SELECT
+  str(?qtl_id)
+  str(?gene_id)
+FROM <http://solgenomics.net/genome/Solanum_lycopersicum>
+FROM <http://solgenomics.net/genome/Solanum_tuberosum>
+FROM <http://europepmc.org>
+WHERE {
+  ?gene a Gene: ;
+    dcterms:identifier ?gene_id .
+  ?qtl a QTL: ;
+    dcterms:identifier ?qtl_id ;
+    so:overlaps ?gene .
+}
+
+# QTL-Trait
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX QTL: <http://purl.obolibrary.org/obo/SO_0000771>
+PREFIX obo: <http://purl.obolibrary.org/obo/>
+
+SELECT
+  str(?qtl_id)
+  str(?trait_id)
+WHERE {
+  GRAPH <http://europepmc.org> {
+    SELECT
+      *
+    WHERE {
+      ?qtl a QTL: ;
+        dcterms:identifier ?qtl_id ;
+        obo:RO_0003308 ?trait_id .
+    }
+  }
+}
+
+# Trait ID-Name
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX bif: <bif:>
+
+SELECT
+  str(?trait_id)
+  str(?trait_term)
+FROM <http://purl.obolibrary.org/obo/po.owl>
+FROM <http://purl.obolibrary.org/obo/to.owl>
+FROM <http://purl.bioontology.org/ontology/SPTO>
+WHERE {
+  ?trait_uri rdfs:label ?trait_term ;
+    <http://www.geneontology.org/formats/oboInOwl#id> ?trait_id .
+}
+
