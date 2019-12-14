@@ -49,7 +49,7 @@ PREFIX obo: <http://purl.obolibrary.org/obo/>
 
 SELECT
   str(?qtl_id)
-  str(?trait_id)
+  replace(replace(str(?trait_id), '.+/', ''), '_', ':')
 WHERE {
   GRAPH <http://europepmc.org> {
     SELECT
