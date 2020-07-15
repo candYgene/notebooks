@@ -1,0 +1,28 @@
+PREFIX dc: <http://purl.org/dc/elements/1.1/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX obo: <http://purl.obolibrary.org/obo/>
+PREFIX faldo: <http://biohackathon.org/resource/faldo#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX ss: <http://semanticscience.org/resource/>
+
+SELECT DISTINCT
+   #main data
+   str(?gene_id) AS ?gene_id
+   str(?location_in_text) AS ?location   
+WHERE {
+   
+      ?gene_uri dcterms:identifier ?gene_id;
+                a obo:SO_0001217;
+                rdfs:label ?label;
+                faldo:location ?location.
+      ?location rdfs:label ?location_in_text.
+      ?location faldo:begin ?begin;
+                faldo:end ?end.
+      ?begin faldo:position ?begin_pos;
+                faldo:reference <%(beginRef)s>. 
+      ?end faldo:position ?end_pos;
+                faldo:reference <%(endRef)s>.     
+      
+   FILTER( (xsd:integer(?begin_pos) >= %(beginPos)i ) && (xsd:integer(?end_pos) > %(beginPos)i ) && (xsd:integer(?begin_pos) < %(endPos)i ) && (xsd:integer(?end_pos) <= %(endPos)i ) )   
+}
+ORDER BY ASC(?begin_pos)

@@ -1,0 +1,50 @@
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX dc: <http://purl.org/dc/elements/1.1/>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX obo: <http://purl.obolibrary.org/obo/>
+PREFIX ensembl: <http://rdf.ebi.ac.uk/resource/ensembl/>
+PREFIX oma: <http://omabrowser.org/ontology/oma#>
+PREFIX orth: <http://purl.org/net/orth#>
+PREFIX sio: <http://semanticscience.org/resource/>
+PREFIX taxon: <http://purl.uniprot.org/taxonomy/>
+PREFIX up: <http://purl.uniprot.org/core/>
+PREFIX void: <http://rdfs.org/ns/void#>
+PREFIX lscr: <http://purl.org/lscr#>
+
+#get only group paths that end with a uniprot annotated protein
+SELECT
+  DISTINCT
+  ?group
+  (?group_label AS ?label)
+  (IF(?group_class = orth:OrthologsCluster,"ortholog","paralog") AS ?type)
+  (?group_parent AS ?parent)
+  (?group_parent_label AS ?parent_label)
+  (IF(?group_parent_class = orth:OrthologsCluster,"ortholog",IF(?group_parent_class = orth:ParalogsCluster,"paralog", ?group_parent_class)) AS ?parent_type)  
+{
+  %(parent)s orth:hasHomologousMember* ?group_path.
+  ?group_path orth:hasHomologousMember? ?group.      
+  ?group a ?group_class.            
+  FILTER(?group_class IN (orth:OrthologsCluster,orth:ParalogsCluster))    
+  OPTIONAL {  
+    ?group_parent orth:hasHomologousMember ?group.  
+    ?group_parent a ?group_parent_class.  
+    FILTER(?group_parent_class IN (orth:OrthologsCluster,orth:ParalogsCluster)) 
+    OPTIONAL {
+      ?group_parent orth:hasTaxonomicRange ?tr2.
+      ?tr2 orth:taxRange ?group_parent_label    
+    }   
+  }    
+  ?group orth:hasHomologousMember* ?protein. 
+  ?protein a orth:Protein; 
+  lscr:xrefUniprot ?protein_uniprot   
+  OPTIONAL {
+    ?group orth:hasTaxonomicRange ?tr1.
+    ?tr1 orth:taxRange ?group_label    
+  }              
+}  
+ORDER BY ?group_parent ?group
+LIMIT 10000

@@ -1,0 +1,19 @@
+PREFIX obo: <http://www.geneontology.org/formats/oboInOwl#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT
+  ?go_annotation
+  GROUP_CONCAT(DISTINCT STR(?label);SEPARATOR="\n") AS ?label
+WHERE
+{
+  ?item obo:id "%(annotation)s"^^xsd:string;
+  obo:hasOBONamespace ?namespace.
+  ?go_annotation rdfs:subClassOf* ?item;
+  obo:hasOBONamespace ?namespace
+  OPTIONAL {
+    ?go_annotation rdfs:label ?label
+  }
+} 
+GROUP BY ?go_annotation
+LIMIT 10000

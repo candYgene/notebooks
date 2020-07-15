@@ -1,0 +1,31 @@
+PREFIX obo: <http://purl.obolibrary.org/obo/>
+PREFIX faldo: <http://biohackathon.org/resource/faldo#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+
+SELECT
+   str(?gene_id) AS ?gene_id
+   ?graph
+   str(?location_in_text) as ?location
+   str(?begin_pos) AS ?begin_pos
+   ?begin_ref
+   str(?end_pos) AS ?end_pos
+   ?end_ref
+FROM NAMED <http://solgenomics.net/genome/Solanum_tuberosum>
+FROM NAMED <http://solgenomics.net/genome/Solanum_lycopersicum>
+WHERE { GRAPH ?graph
+    {
+      ?gene_uri dcterms:identifier ?gene_id;
+                a ?class;
+                rdfs:label ?label;
+                faldo:location ?location.
+      ?location rdfs:label ?location_in_text.
+      ?location faldo:begin ?begin;
+                faldo:end ?end.
+      ?begin faldo:position ?begin_pos;
+      faldo:reference ?begin_ref. 
+      ?end faldo:position ?end_pos;  
+      faldo:reference ?end_ref.  
+   }
+   FILTER(str(?gene_id) = "%s")
+   FILTER(?class in (obo:SO_0001645,obo:SO_0001217))   
+}
