@@ -237,6 +237,8 @@ class SEARCH:
         self.sparql_oma.setReturnFormat(JSON)
         self.sparql_uniprot = SPARQLWrapper(self.url_uniprot)
         self.sparql_uniprot.setReturnFormat(JSON)
+        self.sparql_uniprot.setRequestMethod("postdirectly")
+        self.sparql_uniprot.setMethod("POST") 
         
     def cache_name(self, method, parameters) :
         key = method+"_"+hashlib.md5(pickle.dumps(parameters)).hexdigest()
@@ -564,7 +566,7 @@ class SEARCH:
             # JSON example
             response = self.sparql_uniprot.query().convert()
             result = []
-            if response["results"]["bindings"]: 
+            if "results" in response.keys() and response["results"]["bindings"]: 
                 for item in response["results"]["bindings"]:
                     row = [
                       item["uniprot"]["value"],
