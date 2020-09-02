@@ -89,7 +89,7 @@ class QTLSEARCH:
                             #create uniprot list for checking
                             list_proteins = list(tree_proteins_uniprot.index)
                             #divide proteins into chunks (sparql endpoint doesn't allow huge lists)
-                            n=50
+                            n=10000
                             lists_proteins = [list_proteins[i * n:(i + 1) * n] for i in range((len(list_proteins) + n - 1) // n )]          
                             checked_proteins_list = []
                             #check chunks of proteins in uniprot
@@ -105,7 +105,10 @@ class QTLSEARCH:
                                       print("    -> "+", ".join(sublist_labels))
                                 #add checked proteins from chunk to the collective list        
                                 checked_proteins_list.append(checked_proteins_sublist)
-                            checked_proteins = pd.concat(checked_proteins_list)                 
+                            if len(checked_proteins_list)>0:
+                                checked_proteins = pd.concat(checked_proteins_list)                 
+                            else:
+                                checked_proteins = []
                             #update reviewed
                             hog_group_genes[qtl_gene_roots[gene]].reviewed = None
                             if qtl_gene_protein[gene] in gene_p_initial.index:
@@ -161,48 +164,55 @@ class QTLSEARCH:
     
     def __do_computations(self):
         
-        def get_p_up(gene, group):
-            children = self.hog_group_trees[self.qtl_gene_roots[gene]].loc[self.hog_group_trees[self.qtl_gene_roots[gene]].parent==group]
-            proteins = self.hog_group_genes[self.qtl_gene_roots[gene]].loc[self.hog_group_genes[self.qtl_gene_roots[gene]].group==group]
-            type = self.hog_group_trees[self.qtl_gene_roots[gene]].loc[group,"type"]
-            p = self.hog_group_trees[self.qtl_gene_roots[gene]].loc[group,"p_initial"]
-            for protein in proteins.index:
-                if type=="ortholog":
-                    p +=  self.loss_up_ortholog * self.hog_group_genes[self.qtl_gene_roots[gene]].loc[protein,"p_initial"]
-                elif type=="paralog":    
-                    p +=  self.loss_up_paralog * self.hog_group_genes[self.qtl_gene_roots[gene]].loc[protein,"p_initial"]
-            for child in children.index:
-                if type=="ortholog":
-                    p +=  self.loss_up_ortholog * get_p_up(gene, child)
-                elif type=="paralog":    
-                    p +=  self.loss_up_paralog * get_p_up(gene, child)   
-            self.hog_group_trees[self.qtl_gene_roots[gene]].loc[group,"p_up"] = p
-            #print("Group "+group+" - "+type+": "+str(p))
-            return p;
+        def get_p_up(gene, group):      
+            if group in self.hog_group_trees[self.qtl_gene_roots[gene]].index:
+                p = self.hog_group_trees[self.qtl_gene_roots[gene]].loc[group,"p_initial"]
+                if "type" in self.hog_group_trees[self.qtl_gene_roots[gene]].keys():
+                    type = self.hog_group_trees[self.qtl_gene_roots[gene]].loc[group,"type"]
+                    if "group" in self.hog_group_trees[self.qtl_gene_roots[gene]].keys():
+                        proteins = self.hog_group_genes[self.qtl_gene_roots[gene]].loc[self.hog_group_genes[self.qtl_gene_roots[gene]].group==group]
+                        for protein in proteins.index:
+                            if type=="ortholog":
+                                p +=  self.loss_up_ortholog * self.hog_group_genes[self.qtl_gene_roots[gene]].loc[protein,"p_initial"]
+                            elif type=="paralog":    
+                                p +=  self.loss_up_paralog * self.hog_group_genes[self.qtl_gene_roots[gene]].loc[protein,"p_initial"]
+                    if "parent" in self.hog_group_trees[self.qtl_gene_roots[gene]].keys():
+                        children = self.hog_group_trees[self.qtl_gene_roots[gene]].loc[self.hog_group_trees[self.qtl_gene_roots[gene]].parent==group]
+                        for child in children.index:
+                            if type=="ortholog":
+                                p +=  self.loss_up_ortholog * get_p_up(gene, child)
+                            elif type=="paralog":    
+                                p +=  self.loss_up_paralog * get_p_up(gene, child)   
+                self.hog_group_trees[self.qtl_gene_roots[gene]].loc[group,"p_up"] = p
+                return p
+            else:
+                return 0
 
         def set_p_down(gene, group):
-            children = self.hog_group_trees[self.qtl_gene_roots[gene]].loc[self.hog_group_trees[self.qtl_gene_roots[gene]].parent==group]
-            proteins = self.hog_group_genes[self.qtl_gene_roots[gene]].loc[self.hog_group_genes[self.qtl_gene_roots[gene]].group==group]
-            type = self.hog_group_trees[self.qtl_gene_roots[gene]].loc[group,"type"]
-            p = self.hog_group_trees[self.qtl_gene_roots[gene]].loc[group,"p_up"]
-            parent = self.hog_group_trees[self.qtl_gene_roots[gene]].loc[group,"parent"]
-            if not(parent==None):
-              parent_type = self.hog_group_trees[self.qtl_gene_roots[gene]].loc[group,"type"]  
-              parent_p = self.hog_group_trees[self.qtl_gene_roots[gene]].loc[parent,"p_down"]
-              if parent_type=="ortholog":  
-                  p = max(p,self.loss_down_ortholog*parent_p)
-              elif parent_type=="paralog":
-                  p = max(p,self.loss_down_paralog*parent_p)
-            self.hog_group_trees[self.qtl_gene_roots[gene]].loc[group,"p_down"] = p
-            for protein in proteins.index:  
-                p_protein = self.hog_group_genes[self.qtl_gene_roots[gene]].loc[protein,"p_initial"]
-                if type=="ortholog":
-                    p_protein = max(self.loss_down_ortholog*p,p_protein)
-                elif type=="paralog":
-                    p_protein = max(self.loss_down_paralog*p,p_protein)    
-                self.hog_group_genes[self.qtl_gene_roots[gene]].loc[protein,"p_final"] = p_protein          
-            for child in children.index: 
-                set_p_down(gene, child)
+            if group in self.hog_group_trees[self.qtl_gene_roots[gene]].index:
+                p = self.hog_group_trees[self.qtl_gene_roots[gene]].loc[group,"p_up"]
+                if "type" in self.hog_group_trees[self.qtl_gene_roots[gene]].keys():
+                    type = self.hog_group_trees[self.qtl_gene_roots[gene]].loc[group,"type"]
+                    children = self.hog_group_trees[self.qtl_gene_roots[gene]].loc[self.hog_group_trees[self.qtl_gene_roots[gene]].parent==group]
+                    proteins = self.hog_group_genes[self.qtl_gene_roots[gene]].loc[self.hog_group_genes[self.qtl_gene_roots[gene]].group==group]
+                    parent = self.hog_group_trees[self.qtl_gene_roots[gene]].loc[group,"parent"]
+                    if not(parent==None):
+                      parent_type = self.hog_group_trees[self.qtl_gene_roots[gene]].loc[group,"type"]  
+                      parent_p = self.hog_group_trees[self.qtl_gene_roots[gene]].loc[parent,"p_down"]
+                      if parent_type=="ortholog":  
+                          p = max(p,self.loss_down_ortholog*parent_p)
+                      elif parent_type=="paralog":
+                          p = max(p,self.loss_down_paralog*parent_p)
+                    self.hog_group_trees[self.qtl_gene_roots[gene]].loc[group,"p_down"] = p
+                    for protein in proteins.index:  
+                        p_protein = self.hog_group_genes[self.qtl_gene_roots[gene]].loc[protein,"p_initial"]
+                        if type=="ortholog":
+                            p_protein = max(self.loss_down_ortholog*p,p_protein)
+                        elif type=="paralog":
+                            p_protein = max(self.loss_down_paralog*p,p_protein)    
+                        self.hog_group_genes[self.qtl_gene_roots[gene]].loc[protein,"p_final"] = p_protein          
+                    for child in children.index: 
+                        set_p_down(gene, child)
     
         for qtl in self.qtls:
             for gene in qtl:        
@@ -237,6 +247,8 @@ class SEARCH:
         self.sparql_oma.setReturnFormat(JSON)
         self.sparql_uniprot = SPARQLWrapper(self.url_uniprot)
         self.sparql_uniprot.setReturnFormat(JSON)
+        self.sparql_uniprot.setRequestMethod("postdirectly")
+        self.sparql_uniprot.setMethod("POST") 
         
     def cache_name(self, method, parameters) :
         key = method+"_"+hashlib.md5(pickle.dumps(parameters)).hexdigest()
@@ -564,7 +576,7 @@ class SEARCH:
             # JSON example
             response = self.sparql_uniprot.query().convert()
             result = []
-            if response["results"]["bindings"]: 
+            if (not type(response) == bytes) and response and "results" in response.keys() and response["results"]["bindings"]: 
                 for item in response["results"]["bindings"]:
                     row = [
                       item["uniprot"]["value"],
